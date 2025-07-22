@@ -1,7 +1,7 @@
 
 const { pool } = require('../database');
 
-// Tüm notları getir
+// Get all notes
 const getAllNotes = async (req, res) => {
   try {
     const result = await pool.query(
@@ -10,88 +10,77 @@ const getAllNotes = async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Notlar getirilemedi' });
+    res.status(500).json({ error: 'Could not fetch notes' });
   }
 };
 
-// ID ile not getir
+// Get note by ID
 const getNoteById = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('SELECT * FROM notes WHERE id = $1', [id]);
-    
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Not bulunamadı' });
+      return res.status(404).json({ error: 'Note not found' });
     }
-    
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Not getirilemedi' });
+    res.status(500).json({ error: 'Could not fetch note' });
   }
 };
 
-// Yeni not oluştur
+// Create note
 const createNote = async (req, res) => {
   try {
-    const { title, content } = req.body;
-    
+    const { title, content, completed } = req.body;
     if (!title) {
-      return res.status(400).json({ error: 'Başlık gerekli' });
+      return res.status(400).json({ error: 'Title is required' });
     }
-    
     const result = await pool.query(
-      'INSERT INTO notes (title, content) VALUES ($1, $2) RETURNING *',
-      [title, content || '']
+      'INSERT INTO notes (title, content, completed) VALUES ($1, $2, $3) RETURNING *',
+      [title, content || '', completed === true]
     );
-    
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Not oluşturulamadı' });
+    res.status(500).json({ error: 'Could not create note' });
   }
 };
 
-// Not güncelle
+// Update note
 const updateNote = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
-    
+    const { title, content, completed } = req.body;
     if (!title) {
-      return res.status(400).json({ error: 'Başlık gerekli' });
+      return res.status(400).json({ error: 'Title is required' });
     }
-    
     const result = await pool.query(
-      'UPDATE notes SET title = $1, content = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
-      [title, content || '', id]
+      'UPDATE notes SET title = $1, content = $2, completed = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [title, content || '', completed === true, id]
     );
-    
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Not bulunamadı' });
+      return res.status(404).json({ error: 'Note not found' });
     }
-    
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Not güncellenemedi' });
+    res.status(500).json({ error: 'Could not update note' });
   }
 };
 
-// Not sil
+// Delete note
 const deleteNote = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM notes WHERE id = $1 RETURNING *', [id]);
-    
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Not bulunamadı' });
+      return res.status(404).json({ error: 'Note not found' });
     }
-    
-    res.json({ message: 'Not silindi', note: result.rows[0] });
+    res.json({ message: 'Note deleted', note: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Not silinemedi' });
+    res.status(500).json({ error: 'Could not delete note' });
   }
 };
 

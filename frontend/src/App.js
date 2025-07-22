@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Moon, Sun, Save, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Moon, Sun, Save, X, CheckSquare, Square } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -13,15 +13,15 @@ const NotesApp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // API çağrıları
+  // API calls
   const fetchNotes = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/notes`);
-      if (!response.ok) throw new Error('Notlar getirilemedi');
+      if (!response.ok) throw new Error('Failed to fetch notes');
       const data = await response.json();
       setNotes(data);
     } catch (err) {
-      setError('Notlar yüklenirken hata oluştu');
+      setError('Error loading notes');
       console.error(err);
     } finally {
       setLoading(false);
@@ -42,31 +42,51 @@ const NotesApp = () => {
         body: JSON.stringify(formData)
       });
       
-      if (!response.ok) throw new Error('Not kaydedilemedi');
+      if (!response.ok) throw new Error('Failed to save note');
       
       await fetchNotes();
       setShowModal(false);
       setEditingNote(null);
       setFormData({ title: '', content: '' });
     } catch (err) {
-      setError('Not kaydedilirken hata oluştu');
+      setError('Error saving note');
       console.error(err);
     }
   };
 
   const deleteNote = async (id) => {
-    if (!window.confirm('Bu notu silmek istediğinizden emin misiniz?')) return;
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
     
     try {
       const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
         method: 'DELETE'
       });
       
-      if (!response.ok) throw new Error('Not silinemedi');
+      if (!response.ok) throw new Error('Failed to delete note');
       
       await fetchNotes();
     } catch (err) {
-      setError('Not silinirken hata oluştu');
+      setError('Error deleting note');
+      console.error(err);
+    }
+  };
+
+  // Toggle completed status
+  const toggleCompleted = async (note) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes/${note.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: note.title,
+          content: note.content,
+          completed: !note.completed
+        })
+      });
+      if (!response.ok) throw new Error('Failed to update note');
+      await fetchNotes();
+    } catch (err) {
+      setError('Error updating note');
       console.error(err);
     }
   };
@@ -80,7 +100,7 @@ const NotesApp = () => {
 
   const handleEditNote = (note) => {
     setEditingNote(note);
-    setFormData({ title: note.title, content: note.content || '' });
+    setFormData({ title: note.title, content: note.content || '', completed: note.completed });
     setShowModal(true);
   };
 
@@ -94,7 +114,7 @@ const NotesApp = () => {
     setDarkMode(!darkMode);
   };
 
-  // Filtrelenmiş notlar
+  // Filtered notes
   const filteredNotes = notes.filter(note =>
     note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (note.content || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -121,7 +141,7 @@ const NotesApp = () => {
   if (loading) {
     return (
       <div className={`${containerClass} flex items-center justify-center`}>
-        <div className="text-xl">Yükleniyor...</div>
+        <div className="text-xl">Loading...</div>
       </div>
     );
   }
@@ -131,7 +151,7 @@ const NotesApp = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold mb-4 md:mb-0">📝 Notlarım</h1>
+          <h1 className="text-3xl font-bold mb-4 md:mb-0">📝 My Notes</h1>
           <div className="flex items-center gap-4">
             <button
               onClick={toggleDarkMode}
@@ -144,7 +164,7 @@ const NotesApp = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
-              Yeni Not
+              New Note
             </button>
           </div>
         </div>
@@ -162,7 +182,7 @@ const NotesApp = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Notlarda ara..."
+              placeholder="Search notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${inputClass}`}
@@ -175,10 +195,10 @@ const NotesApp = () => {
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📝</div>
             <p className="text-xl mb-2">
-              {searchTerm ? 'Arama kriterlerine uygun not bulunamadı' : 'Henüz not eklenmemiş'}
+              {searchTerm ? 'No notes found for your search.' : 'No notes yet.'}
             </p>
             <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {!searchTerm && 'İlk notunuzu eklemek için "Yeni Not" butonuna tıklayın'}
+              {!searchTerm && 'Click "New Note" to add your first note.'}
             </p>
           </div>
         ) : (
@@ -189,7 +209,18 @@ const NotesApp = () => {
                 className={`border rounded-lg p-4 hover:shadow-lg transition-all duration-200 ${cardClass}`}
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-lg truncate pr-2">{note.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleCompleted(note)}
+                      className={`p-1 rounded ${note.completed ? 'text-green-600' : 'text-gray-400'} hover:bg-gray-100 dark:hover:bg-gray-700`}
+                      title={note.completed ? 'Mark as not done' : 'Mark as done'}
+                    >
+                      {note.completed ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </button>
+                    <h3 className={`font-semibold text-lg truncate pr-2 ${note.completed ? 'line-through text-gray-400' : ''}`}>
+                      {note.title}
+                    </h3>
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEditNote(note)}
@@ -205,13 +236,11 @@ const NotesApp = () => {
                     </button>
                   </div>
                 </div>
-                
                 {note.content && (
-                  <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} text-sm mb-3 line-clamp-3`}>
+                  <p className={`text-sm mb-3 line-clamp-3 ${note.completed ? 'line-through text-gray-400' : darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     {note.content}
                   </p>
                 )}
-                
                 <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                   {new Date(note.updated_at).toLocaleDateString('tr-TR', {
                     year: 'numeric',
@@ -232,7 +261,7 @@ const NotesApp = () => {
             <div className={`w-full max-w-md rounded-lg p-6 ${cardClass}`}>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">
-                  {editingNote ? 'Notu Düzenle' : 'Yeni Not'}
+                  {editingNote ? 'Edit Note' : 'New Note'}
                 </h2>
                 <button
                   onClick={handleCloseModal}
@@ -245,13 +274,13 @@ const NotesApp = () => {
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Not başlığı..."
+                  placeholder="Note title..."
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${inputClass}`}
                 />
                 <textarea
-                  placeholder="Not içeriği..."
+                  placeholder="Note content..."
                   rows={6}
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
@@ -263,7 +292,7 @@ const NotesApp = () => {
                     onClick={handleCloseModal}
                     className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
                   >
-                    İptal
+                    Cancel
                   </button>
                   <button
                     onClick={saveNote}
@@ -271,7 +300,7 @@ const NotesApp = () => {
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                   >
                     <Save className="w-4 h-4" />
-                    Kaydet
+                    Save
                   </button>
                 </div>
               </div>

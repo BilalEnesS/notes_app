@@ -59,12 +59,6 @@ npm install
 - Backend: `.env` file for database connection
 - Frontend: No environment variables required by default
 
-## Important Notes
-- **Do not push `node_modules` to GitHub!**
-  - Both `backend` and `frontend` have their own `node_modules` directories.
-  - These are excluded by default using `.gitignore`.
-- All code comments are in English for clarity.
-
 ## Example API Endpoints
 - `GET    /api/notes`         - Get all notes
 - `GET    /api/notes/:id`     - Get a note by ID
